@@ -44,6 +44,11 @@ kotlin {
     }
 }
 
+dependencies {
+    // suspend関数でFlutterの戻り値を待つために使用(メインスレッドのみで非同期処理を書ける)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+}
+
 flutter {
     source = "../.."
 }

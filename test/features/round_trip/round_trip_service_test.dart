@@ -1,51 +1,31 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_kotlin/core/native_channel.dart';
+import 'package:flutter_kotlin/features/round_trip/services/round_trip_service.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_kotlin/main.dart';
-import 'package:flutter_kotlin/native/native_channel.dart';
-import 'package:flutter_kotlin/native/round_trip_service.dart';
 
-const _channel = MethodChannel(nativeChannelName);
+const _channel = MethodChannel(roundTripChannelName);
 const _codec = StandardMethodCodec();
-
-TestDefaultBinaryMessenger get _messenger =>
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  tearDown(() => _messenger.setMockMethodCallHandler(_channel, null));
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
-  testWidgets('greetボタンでKotlinの結果が表示される', (tester) async {
-    // Kotlin側の代わりにMethodChannelをモックする
-    _messenger.setMockMethodCallHandler(_channel, (call) async {
-      if (call.method == 'greet') {
-        return 'こんにちは、${call.arguments['name']} さん!';
-      }
-      return null;
-    });
-
-    await tester.pumpWidget(const ProviderScope(child: MyApp()));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('greet を呼ぶ'));
-    await tester.pump();
-
-    expect(find.textContaining('こんにちは、テスト太郎 さん'), findsOneWidget);
-  });
+  tearDown(() => messenger.setMockMethodCallHandler(_channel, null));
 
   test('往復処理: Kotlinからの呼び出しをFlutterが加工して返し、最終結果を得る', () async {
     // Kotlin側のモック。実機と同じく「②Flutterを逆呼び出し → ③結果を加工 → ④返す」を再現する
-    _messenger.setMockMethodCallHandler(_channel, (call) async {
+    messenger.setMockMethodCallHandler(_channel, (call) async {
       expect(call.method, 'runRoundTrip');
       final input = call.arguments['input'] as String;
 
       // Kotlin → Dart の呼び出しをシミュレートし、Dartハンドラの戻り値を受け取る
       final completer = Completer<ByteData?>();
-      _messenger.handlePlatformMessage(
-        nativeChannelName,
+      messenger.handlePlatformMessage(
+        roundTripChannelName,
         _codec.encodeMethodCall(
           MethodCall('onIntermediate', {
             'value': '${input.toUpperCase()} (Kotlin)',
